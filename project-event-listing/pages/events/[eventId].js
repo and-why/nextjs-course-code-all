@@ -1,17 +1,13 @@
 import { Fragment } from 'react';
-import { useRouter } from 'next/router';
 
-import { getEventById } from '../../dummy-data';
+import { getAllEvents, getEventById, getFeaturedEvents } from '../../helpers/api-util';
 import EventSummary from '../../components/event-detail/event-summary';
 import EventLogistics from '../../components/event-detail/event-logistics';
 import EventContent from '../../components/event-detail/event-content';
 import ErrorAlert from '../../components/ui/error-alert';
 
 function EventDetailPage(props) {
-  const router = useRouter();
-  const data = props.events;
-  const eventId = router.query.eventId;
-  const event = getEventById(eventId, data);
+  const event = props.event;
 
   if (!event) {
     return (
@@ -39,41 +35,23 @@ function EventDetailPage(props) {
 
 export default EventDetailPage;
 
-async function getData() {
-  const res = await fetch(
-    'https://nextjs-course-6f90d-default-rtdb.asia-southeast1.firebasedatabase.app/events.json',
-  );
-  const data = await res.json();
-  const events = [];
-  for (const key in data) {
-    events.push({
-      id: key,
-      title: data[key].title,
-      description: data[key].description,
-      image: data[key].image,
-      location: data[key].location,
-      isFeatured: data[key].isFeatured,
-      date: data[key].date,
-    });
-  }
-  return events;
-}
+export async function getStaticProps(context) {
+  const eventId = context.params.eventId;
+  const event = await getEventById(eventId);
 
-export async function getStaticProps() {
-  const data = await getData();
   return {
     props: {
-      events: data,
+      event: event,
     },
+    revalidate: 1800,
   };
 }
 export async function getStaticPaths() {
-  const data = await getData();
-  console.log(data);
-  const ids = data.map((event) => event.id);
-  const pathsWithParams = ids.map((id) => ({ params: { eventId: id } }));
+  const events = await getFeaturedEvents();
+
+  const paths = events.map((event) => ({ params: { eventId: event.id } }));
   return {
-    paths: pathsWithParams,
-    fallback: false, // See the "fallback" section below
+    paths: paths,
+    fallback: 'blocking', // See the "fallback" section below
   };
 }
